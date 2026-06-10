@@ -25,6 +25,7 @@ export default function Account() {
 
   // Supabase Auth: email magic-link OR phone OTP — no password stored client-side.
   const signIn = async () => {
+    const sb = supabaseBrowser();
     setMsg("");
     if (mode === "email") {
       const { error } = await sb.auth.signInWithOtp({ email });
@@ -77,7 +78,7 @@ export default function Account() {
       <main style={{ padding: "44px 22px 56px", maxWidth: 820, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 600 }}>My Orders</h1>
-          <button onClick={() => sb.auth.signOut().then(() => location.reload())}
+          <button onClick={() => supabaseBrowser().auth.signOut().then(() => location.reload())}
             style={{ ...inputStyle, width: "auto", cursor: "pointer" }}>Sign out</button>
         </div>
         <p style={{ color: "var(--muted)", marginBottom: 24 }}>Signed in as {user.email || user.phone}</p>
