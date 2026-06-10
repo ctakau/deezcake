@@ -12,9 +12,8 @@ export default function Account() {
   const [phone, setPhone] = useState("");
   const [sent, setSent] = useState(false);
   const [msg, setMsg] = useState("");
-  const sb = supabaseBrowser();
-
   useEffect(() => {
+    const sb = supabaseBrowser();
     sb.auth.getUser().then(({ data }) => {
       if (data.user) {
         setUser(data.user);
@@ -22,7 +21,6 @@ export default function Account() {
           .then(({ data: rows }) => setOrders(rows || []));
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Supabase Auth: email magic-link OR phone OTP — no password stored client-side.
