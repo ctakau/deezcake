@@ -12,7 +12,10 @@
 body{margin:0;background:var(--cream);color:var(--ink);font-family:'Inter',system-ui,sans-serif}
 ::selection{background:var(--rose);color:#fff}
 button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+  .animate-in,.animate-in-delay-1,.animate-in-delay-2,.animate-in-delay-3{opacity:1!important}
+}
 
 .cake-card{
   background:var(--card);border-radius:16px;border:1px solid var(--line);
@@ -91,11 +94,12 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 }
 
 .hero-section{
-  padding:80px 22px 60px;text-align:center;position:relative;overflow:hidden;
+  padding:50px 22px 40px;text-align:center;position:relative;overflow:hidden;
   background:radial-gradient(1200px 500px at 50% -150px, rgba(181,72,61,.12), transparent),
              radial-gradient(800px 300px at 80% 100%, rgba(201,154,75,.08), transparent),
              var(--cream);
 }
+@media (min-width:768px){.hero-section{padding:80px 22px 60px}}
 
 .footer-link{
   color:#C9C0B2;text-decoration:none;transition:color .2s ease;
