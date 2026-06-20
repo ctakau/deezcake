@@ -148,6 +148,9 @@ export function OrderModal({ product, user, onClose, onPlaced }: any) {
   const [date, setDate] = useState("");
   const [customPrice, setCustomPrice] = useState("");
   const [notes, setNotes] = useState("");
+  const [customerName, setCustomerName] = useState(user?.name ?? "");
+  const [customerEmail, setCustomerEmail] = useState(user?.email ?? "");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -156,22 +159,23 @@ export function OrderModal({ product, user, onClose, onPlaced }: any) {
   const total = isCustom ? (parseInt(customPrice, 10) || 0) : (size ? size.price : 0);
   const minDate = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 3);
     return d.toISOString().slice(0, 10); }, []);
-  const valid = size && total > 0 && date && !busy;
+  const valid = size && total > 0 && date && customerName.trim() &&
+    (customerEmail.trim() || customerPhone.trim()) && !busy;
 
   const submit = async () => {
     setBusy(true); setError("");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
     const sb = supabaseBrowser();
     const { data: { session } } = await sb.auth.getSession();
-    const token = session?.access_token;
-    if (!token) { setError("Not logged in."); setBusy(false); return; }
+    if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
     const res = await fetch("/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      method: "POST", headers,
       body: JSON.stringify({
         productId: product.id, sizeLabel: size.label,
         flavor, message, pickupDate: date, notes, total,
-        customer: user?.name ?? "Guest",
-        email: user?.email, phone: user?.phone,
+        customer: customerName.trim(),
+        email: customerEmail.trim() || null,
+        phone: customerPhone.trim() || null,
       }),
     });
     const data = await res.json();
@@ -190,7 +194,21 @@ export function OrderModal({ product, user, onClose, onPlaced }: any) {
       <h2 style={{ fontFamily: "Fraunces, serif", textAlign: "center", fontSize: 26,
         fontWeight: 600, margin: "0 0 4px" }}>Order Your {product.name.replace(/s$/, "")}</h2>
       <p style={{ textAlign: "center", color: "var(--muted)", fontSize: 14, marginBottom: 22 }}>
-        Select your preferences below</p>
+        Fill in your details and preferences below</p>
+      <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr", marginBottom: 4 }}>
+        <Field label="Your Name *">
+          <input style={inputStyle} value={customerName} placeholder="e.g. Rosa"
+            onChange={(e) => setCustomerName(e.target.value)} />
+        </Field>
+        <Field label="Phone">
+          <input style={inputStyle} value={customerPhone} placeholder="+678 555 1234"
+            onChange={(e) => setCustomerPhone(e.target.value)} />
+        </Field>
+      </div>
+      <Field label="Email">
+        <input style={inputStyle} type="email" value={customerEmail} placeholder="rosa@example.com"
+          onChange={(e) => setCustomerEmail(e.target.value)} />
+      </Field>
       <Field label="Cake Size & Price">
         <select style={inputStyle} value={sizeId} onChange={(e) => setSizeId(e.target.value)}>
           <option value="">— Select size —</option>

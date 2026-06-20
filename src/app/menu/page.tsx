@@ -14,7 +14,7 @@ export default function Menu() {
       if (data.user) setUser({ id: data.user.id, name: data.user.email?.split("@")[0], email: data.user.email });
     });
   }, []);
-  const onOrder = (p: Product) => (user ? setModal(p) : router.push("/account"));
+  const onOrder = (p: Product) => setModal(p);
   return (
     <>
       <Nav user={user} />
@@ -27,7 +27,7 @@ export default function Menu() {
       </main>
       <Footer />
       {modal && <OrderModal product={modal} user={user} onClose={() => setModal(null)}
-        onPlaced={() => { setModal(null); router.push("/account"); }} />}
+        onPlaced={(order: any) => { setModal(null); alert(`Order ${order.order_num} placed! We'll contact you to confirm. Pickup only.`); }} />}
     </>
   );
 }

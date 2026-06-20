@@ -6,11 +6,10 @@ import { getAuthUser } from "@/lib/auth";
 import { randomBytes } from "crypto";
 
 export async function POST(req: Request) {
-  const user = await getAuthUser(req);
-  if (!user) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid body." }, { status: 400 });
+
+  const user = await getAuthUser(req);
 
   const product = PRODUCTS.find((p) => p.id === body.productId);
   if (!product) return NextResponse.json({ error: "Unknown product." }, { status: 400 });
@@ -26,8 +25,12 @@ export async function POST(req: Request) {
   if (!body.pickupDate) return NextResponse.json({ error: "Pickup date required." }, { status: 400 });
 
   const customer = String(body.customer || "").slice(0, 100);
+  if (!customer) return NextResponse.json({ error: "Name required." }, { status: 400 });
+
   const email = body.email ? String(body.email).slice(0, 200) : null;
   const phone = body.phone ? String(body.phone).slice(0, 30) : null;
+  if (!email && !phone) return NextResponse.json({ error: "Email or phone required." }, { status: 400 });
+
   const message = body.message ? String(body.message).slice(0, 60) : null;
   const notes = body.notes ? String(body.notes).slice(0, 500) : null;
   const flavor = body.flavor ? String(body.flavor).slice(0, 50) : null;
@@ -52,7 +55,7 @@ export async function POST(req: Request) {
       notes,
       total,
       cogs,
-      user_id: user.id,
+      user_id: user?.id ?? null,
     })
     .select("*")
     .single();
@@ -68,7 +71,7 @@ export async function POST(req: Request) {
     if (err) return NextResponse.json({ error: "Journal rejected: " + err }, { status: 422 });
     const { data: h } = await db.from("transactions").insert({
       txn_date: j.date, description: j.desc, reference: j.ref,
-      source: "order", order_num: orderNum, created_by: user.id,
+      source: "order", order_num: orderNum, created_by: user?.id ?? null,
     }).select("id").single();
     if (h) {
       await db.from("splits").insert(j.splits.map((s) => ({

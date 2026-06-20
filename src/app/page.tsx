@@ -18,7 +18,7 @@ export default function Home() {
     });
   }, []);
 
-  const onOrder = (p: Product) => (user ? setModal(p) : router.push("/account"));
+  const onOrder = (p: Product) => setModal(p);
 
   return (
     <>
@@ -84,7 +84,7 @@ export default function Home() {
       </main>
       <Footer />
       {modal && <OrderModal product={modal} user={user} onClose={() => setModal(null)}
-        onPlaced={() => { setModal(null); router.push("/account"); }} />}
+        onPlaced={(order: any) => { setModal(null); alert(`Order ${order.order_num} placed! We'll contact you to confirm. Pickup only.`); }} />}
     </>
   );
 }
