@@ -131,7 +131,11 @@ function OrdersAdmin({ orders, reload }: any) {
     await supabaseBrowser().from("orders").update({ status }).eq("id", o.id); reload();
   };
   const pay = async (o: any, amount: number, method: string) => {
-    await fetch("/api/payments", { method: "POST", headers: { "Content-Type": "application/json" },
+    const sb = supabaseBrowser();
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token ?? "";
+    await fetch("/api/payments", { method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
       body: JSON.stringify({ orderNum: o.order_num, amount, method }) }); reload();
   };
   return (
@@ -191,7 +195,11 @@ function JournalEntry({ reload }: { reload: () => void }) {
   const txn: Txn = { date, desc, ref, source: "manual", splits };
   const err = validateTxn(txn) || (!desc.trim() ? "Add a description." : null);
   const post = async () => {
-    const res = await fetch("/api/journal", { method: "POST", headers: { "Content-Type": "application/json" },
+    const sb = supabaseBrowser();
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token ?? "";
+    const res = await fetch("/api/journal", { method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
       body: JSON.stringify(txn) });
     const data = await res.json();
     if (!res.ok) { setMsg(data.error); return; }

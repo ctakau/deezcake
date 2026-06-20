@@ -3,6 +3,7 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { Product, FLAVORS } from "@/lib/catalogue";
 import { vt } from "@/lib/accounting";
+import { supabaseBrowser } from "@/lib/supabase-client";
 
 export const Pill = ({ children, bg, fg }: any) => (
   <span className="tag-pill" style={{ background: bg, color: fg }}>
@@ -64,8 +65,8 @@ const CAKE_ICONS: Record<string, React.ReactNode> = {
   fruit: <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 0 1 5 5c0 4-5 9-5 9S7 11 7 7a5 5 0 0 1 5-5z"/><path d="M12 2C9 2 8 4 8 4"/><circle cx="12" cy="7" r="1" fill="#DC2626"/></svg>,
 };
 
-const OWNER_EMAIL = "chesta.takau@gmail.com";
-export const isOwner = (user: any) => user?.email === OWNER_EMAIL;
+export const isOwner = (user: any) =>
+  user?.email === process.env.NEXT_PUBLIC_OWNER_EMAIL;
 
 export function Nav({ user }: { user: any }) {
   return (
@@ -159,13 +160,18 @@ export function OrderModal({ product, user, onClose, onPlaced }: any) {
 
   const submit = async () => {
     setBusy(true); setError("");
+    const sb = supabaseBrowser();
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    if (!token) { setError("Not logged in."); setBusy(false); return; }
     const res = await fetch("/api/orders", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
       body: JSON.stringify({
-        productId: product.id, productName: product.name, sizeLabel: size.label,
+        productId: product.id, sizeLabel: size.label,
         flavor, message, pickupDate: date, notes, total,
-        cogs: Math.round(product.est * 1000), customer: user?.name ?? "Guest",
-        email: user?.email, phone: user?.phone, userId: user?.id,
+        customer: user?.name ?? "Guest",
+        email: user?.email, phone: user?.phone,
       }),
     });
     const data = await res.json();

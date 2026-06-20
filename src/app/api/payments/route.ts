@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { validateTxn, type Txn } from "@/lib/accounting";
+import { getAuthUser, isOwnerEmail } from "@/lib/auth";
 
-/* POST /api/payments
-   Body: { orderNum, amount, method }
-   Posts Cash/Bank up + A/R down, then updates the order's paid/pay_status. */
 export async function POST(req: Request) {
-  const { orderNum, amount, method } = await req.json().catch(() => ({}));
-  if (!orderNum || !amount || amount <= 0)
-    return NextResponse.json({ error: "orderNum and positive amount required." }, { status: 400 });
+  const user = await getAuthUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  if (!isOwnerEmail(user.email))
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+
+  const body = await req.json().catch(() => ({}));
+  const { orderNum, amount, method } = body;
+  if (!orderNum || typeof orderNum !== "string")
+    return NextResponse.json({ error: "orderNum required." }, { status: 400 });
+  if (!amount || typeof amount !== "number" || amount <= 0)
+    return NextResponse.json({ error: "Positive amount required." }, { status: 400 });
+  if (!method || typeof method !== "string")
+    return NextResponse.json({ error: "Payment method required." }, { status: 400 });
 
   const db = supabaseAdmin();
   const { data: order } = await db.from("orders").select("*").eq("order_num", orderNum).single();
@@ -21,10 +29,10 @@ export async function POST(req: Request) {
   const cashAcct = method === "Cash" ? "1000" : "1100";
   const txn: Txn = {
     date: new Date().toISOString().slice(0, 10), ref: orderNum, source: "payment",
-    desc: `Payment received — ${orderNum} (${method})`,
+    desc: `Payment received — ${orderNum} (${String(method).slice(0, 30)})`,
     splits: [
       { account: cashAcct, debit: amount, credit: 0 },
-      { account: "1300", debit: 0, credit: amount }, // clear receivable
+      { account: "1300", debit: 0, credit: amount },
     ],
   };
   const err = validateTxn(txn);
@@ -32,7 +40,7 @@ export async function POST(req: Request) {
 
   const { data: h } = await db.from("transactions").insert({
     txn_date: txn.date, description: txn.desc, reference: txn.ref,
-    source: "payment", order_num: orderNum,
+    source: "payment", order_num: orderNum, created_by: user.id,
   }).select("id").single();
   if (h) {
     await db.from("splits").insert(txn.splits.map((s) => ({

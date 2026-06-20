@@ -17,7 +17,8 @@ export default function Account() {
     sb.auth.getUser().then(({ data }) => {
       if (data.user) {
         setUser(data.user);
-        sb.from("orders").select("*").order("created_at", { ascending: false })
+        sb.from("orders").select("*").eq("user_id", data.user.id)
+          .order("created_at", { ascending: false })
           .then(({ data: rows }) => setOrders(rows || []));
       }
     });
