@@ -64,6 +64,9 @@ const CAKE_ICONS: Record<string, React.ReactNode> = {
   fruit: <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 0 1 5 5c0 4-5 9-5 9S7 11 7 7a5 5 0 0 1 5-5z"/><path d="M12 2C9 2 8 4 8 4"/><circle cx="12" cy="7" r="1" fill="#DC2626"/></svg>,
 };
 
+const OWNER_EMAIL = "chesta.takau@gmail.com";
+export const isOwner = (user: any) => user?.email === OWNER_EMAIL;
+
 export function Nav({ user }: { user: any }) {
   return (
     <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(251,247,240,.92)",
@@ -81,7 +84,7 @@ export function Nav({ user }: { user: any }) {
         <Link href="/" className="nav-link">Home</Link>
         <Link href="/menu" className="nav-link">Our Cakes</Link>
         <Link href="/account" className="nav-link">My Orders</Link>
-        <Link href="/admin" className="nav-link">Admin</Link>
+        {isOwner(user) && <Link href="/admin" className="nav-link">Admin</Link>}
       </div>
     </nav>
   );

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Nav, Footer, Btn, inputStyle, StatusPill } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { Nav, Footer, Btn, inputStyle, StatusPill, isOwner } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase-client";
 import {
   CHART, acctByCode, acctLabel, DEBIT_NORMAL, vt, validateTxn,
@@ -46,15 +47,30 @@ const Verify = ({ ok, text }: { ok: boolean; text: string }) => (
 );
 
 export default function Admin() {
+  const [user, setUser] = useState<any>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const router = useRouter();
   const { txns, orders, reload } = useLedger();
   const [tab, setTab] = useState("dash");
+
+  useEffect(() => {
+    const sb = supabaseBrowser();
+    sb.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      setAuthChecked(true);
+      if (!data.user || !isOwner(data.user)) router.replace("/");
+    });
+  }, [router]);
+
+  if (!authChecked) return null;
+  if (!isOwner(user)) return null;
   const tabs = [["dash", "Dashboard"], ["orders", "Orders"], ["journal", "Journal entry"],
     ["ledger", "General ledger"], ["tb", "Trial balance"], ["pl", "Profit & loss"],
     ["sofp", "Financial position"], ["cf", "Cash flow"], ["coa", "Chart of accounts"]];
 
   return (
     <>
-      <Nav user={null} />
+      <Nav user={user} />
       <main style={{ padding: "30px 22px 56px", maxWidth: 1040, margin: "0 auto" }}>
         <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 28, fontWeight: 600 }}>Owner Dashboard</h1>
         <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 18 }}>
