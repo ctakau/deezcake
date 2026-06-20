@@ -84,7 +84,13 @@ export default function Home() {
       </main>
       <Footer />
       {modal && <OrderModal product={modal} user={user} onClose={() => setModal(null)}
-        onPlaced={(order: any) => { setModal(null); alert(`Order ${order.order_num} placed! We'll contact you to confirm. Pickup only.`); }} />}
+        onPlaced={(order: any) => {
+          setModal(null);
+          const trackMsg = !user ? `\n\nWant to track your orders? Create a free account.` : "";
+          if (confirm(`Order ${order.order_num} placed! We'll contact you to confirm. Pickup only.${trackMsg}`)) {
+            if (!user && order.email) router.push(`/account?prefill=${encodeURIComponent(order.email)}`);
+          }
+        }} />}
     </>
   );
 }
