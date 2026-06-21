@@ -1,36 +1,12 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Nav, Footer, Btn, inputStyle, StatusPill, isOwner } from "@/components/ui";
+import React, { useState, useEffect, useCallback } from "react";
+import { Nav, Footer, Btn, inputStyle, StatusPill, isOwner, Field } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase-client";
 import {
   CHART, acctByCode, acctLabel, DEBIT_NORMAL, vt, validateTxn,
   balanceOf, trialBalance, profitOrLoss, financialPosition, cashFlow, registerFor,
   type Txn,
 } from "@/lib/accounting";
-
-// Pull all posted transactions + splits from Supabase into the engine's Txn[] shape.
-function useLedger() {
-  const [txns, setTxns] = useState<Txn[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const reload = async () => {
-    const sb = supabaseBrowser();
-    const { data: t } = await sb.from("transactions").select("id,txn_date,description,reference,status").order("id");
-    const { data: s } = await sb.from("splits").select("transaction_id,account_code,debit,credit");
-    const { data: o } = await sb.from("orders").select("*").order("created_at", { ascending: false });
-    const byTxn: Record<number, Txn> = {};
-    (t || []).forEach((h: any) => { byTxn[h.id] = { id: h.id, date: h.txn_date, desc: h.description,
-      ref: h.reference, source: "", status: h.status, splits: [] }; });
-    (s || []).forEach((sp: any) => {
-      byTxn[sp.transaction_id]?.splits.push({ account: sp.account_code,
-        debit: Number(sp.debit), credit: Number(sp.credit) });
-    });
-    setTxns(Object.values(byTxn));
-    setOrders(o || []);
-  };
-  useEffect(() => { reload(); }, []);
-  return { txns, orders, reload };
-}
 
 const tdS: React.CSSProperties = { padding: "9px 10px", fontSize: 13, borderBottom: "1px solid var(--line)" };
 const thS: React.CSSProperties = { ...tdS, fontWeight: 700, color: "var(--forest)", textAlign: "left",
@@ -49,21 +25,90 @@ const Verify = ({ ok, text }: { ok: boolean; text: string }) => (
 export default function Admin() {
   const [user, setUser] = useState<any>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const router = useRouter();
-  const { txns, orders, reload } = useLedger();
+  const [txns, setTxns] = useState<Txn[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [tab, setTab] = useState("dash");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPw, setLoginPw] = useState("");
+  const [loginErr, setLoginErr] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
+
+  const reload = useCallback(async () => {
+    try {
+      const sb = supabaseBrowser();
+      const { data: t } = await sb.from("transactions").select("id,txn_date,description,reference,status").order("id");
+      const { data: s } = await sb.from("splits").select("transaction_id,account_code,debit,credit");
+      const { data: o } = await sb.from("orders").select("*").order("created_at", { ascending: false });
+      const byTxn: Record<number, Txn> = {};
+      (t || []).forEach((h: any) => { byTxn[h.id] = { id: h.id, date: h.txn_date, desc: h.description,
+        ref: h.reference, source: "", status: h.status, splits: [] }; });
+      (s || []).forEach((sp: any) => {
+        byTxn[sp.transaction_id]?.splits.push({ account: sp.account_code,
+          debit: Number(sp.debit), credit: Number(sp.credit) });
+      });
+      setTxns(Object.values(byTxn));
+      setOrders(o || []);
+    } catch {} // ponytail: fail gracefully if supabase unreachable
+  }, []);
 
   useEffect(() => {
-    const sb = supabaseBrowser();
-    sb.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-      setAuthChecked(true);
-      if (!data.user || !isOwner(data.user)) router.replace("/");
-    });
-  }, [router]);
+    try {
+      const sb = supabaseBrowser();
+      sb.auth.getUser().then(({ data }) => {
+        setUser(data.user);
+        setAuthChecked(true);
+        if (data.user && isOwner(data.user)) reload();
+      }).catch(() => setAuthChecked(true));
+    } catch { setAuthChecked(true); }
+  }, [reload]);
+
+  const handleLogin = async () => {
+    setLoginErr(""); setLoginBusy(true);
+    try {
+      const sb = supabaseBrowser();
+      const { error } = await sb.auth.signInWithPassword({ email: loginEmail.trim(), password: loginPw });
+      if (error) { setLoginErr(error.message); setLoginBusy(false); return; }
+      window.location.reload();
+    } catch (e: any) { setLoginErr(e.message || "Login failed"); setLoginBusy(false); }
+  };
 
   if (!authChecked) return null;
-  if (!isOwner(user)) return null;
+
+  // ponytail: show login form instead of redirecting — owner can sign in directly
+  if (!user || !isOwner(user)) {
+    return (
+      <>
+        <Nav user={null} />
+        <main style={{ maxWidth: 380, margin: "60px auto", padding: "0 22px" }}>
+          <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 28, fontWeight: 600, textAlign: "center" }}>
+            Owner Login</h1>
+          <p style={{ textAlign: "center", color: "var(--muted)", fontSize: 14, marginBottom: 20 }}>
+            Sign in with your owner account to access the dashboard</p>
+          {user && !isOwner(user) && (
+            <p style={{ color: "var(--bad)", fontSize: 13, marginBottom: 14, padding: "10px 14px",
+              background: "var(--badBg)", borderRadius: 10, textAlign: "center" }}>
+              This account does not have admin access.</p>
+          )}
+          <Field label="Email">
+            <input style={inputStyle} type="email" value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)} placeholder="owner@example.com"
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()} />
+          </Field>
+          <Field label="Password">
+            <input style={inputStyle} type="password" value={loginPw}
+              onChange={(e) => setLoginPw(e.target.value)} placeholder="Your password"
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()} />
+          </Field>
+          {loginErr && <p style={{ color: "var(--bad)", fontSize: 13, marginBottom: 10 }}>{loginErr}</p>}
+          <Btn bg="var(--forest)" onClick={handleLogin} disabled={loginBusy}
+            style={{ width: "100%", padding: 13 }}>
+            {loginBusy ? "Signing in..." : "Sign in"}</Btn>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
   const tabs = [["dash", "Dashboard"], ["orders", "Orders"], ["journal", "Journal entry"],
     ["ledger", "General ledger"], ["tb", "Trial balance"], ["pl", "Profit & loss"],
     ["sofp", "Financial position"], ["cf", "Cash flow"], ["coa", "Chart of accounts"]];
