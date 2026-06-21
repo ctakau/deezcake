@@ -10,9 +10,11 @@ export default function Menu() {
   const [modal, setModal] = useState<Product | null>(null);
   const router = useRouter();
   useEffect(() => {
-    supabaseBrowser().auth.getUser().then(({ data }) => {
-      if (data.user) setUser({ id: data.user.id, name: data.user.email?.split("@")[0], email: data.user.email });
-    });
+    try {
+      supabaseBrowser().auth.getUser().then(({ data }) => {
+        if (data.user) setUser({ id: data.user.id, name: data.user.email?.split("@")[0], email: data.user.email });
+      }).catch(() => {});
+    } catch {} // ponytail: page works even if supabase is down
   }, []);
   const onOrder = (p: Product) => setModal(p);
   return (

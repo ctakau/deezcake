@@ -165,9 +165,11 @@ export function OrderModal({ product, user, onClose, onPlaced }: any) {
   const submit = async () => {
     setBusy(true); setError("");
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    const sb = supabaseBrowser();
-    const { data: { session } } = await sb.auth.getSession();
-    if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
+    try {
+      const sb = supabaseBrowser();
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
+    } catch {} // ponytail: guest orders work without supabase session
     const res = await fetch("/api/orders", {
       method: "POST", headers,
       body: JSON.stringify({

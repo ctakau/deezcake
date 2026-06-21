@@ -11,11 +11,13 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    const sb = supabaseBrowser();
-    sb.auth.getUser().then(({ data }) => {
-      if (data.user) setUser({ id: data.user.id, name: data.user.email?.split("@")[0],
-        email: data.user.email });
-    });
+    try {
+      const sb = supabaseBrowser();
+      sb.auth.getUser().then(({ data }) => {
+        if (data.user) setUser({ id: data.user.id, name: data.user.email?.split("@")[0],
+          email: data.user.email });
+      }).catch(() => {});
+    } catch {} // ponytail: page works even if supabase is down
   }, []);
 
   const onOrder = (p: Product) => setModal(p);
