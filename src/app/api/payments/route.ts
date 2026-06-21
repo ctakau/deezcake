@@ -21,10 +21,9 @@ export async function POST(req: Request) {
   if (!method || typeof method !== "string")
     return NextResponse.json({ error: "Payment method required." }, { status: 400 });
 
-  // ponytail: use anon key — RLS policies allow owner to read/update/insert
-  const db = createClient(URL, KEY);
-  const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (token) await db.auth.setSession({ access_token: token, refresh_token: "" });
+  // ponytail: use anon key + owner's JWT in header — RLS policies allow owner ops
+  const token = req.headers.get("authorization")?.replace("Bearer ", "") ?? "";
+  const db = createClient(URL, KEY, { global: { headers: { Authorization: `Bearer ${token}` } } });
 
   const { data: order } = await db.from("orders").select("*").eq("order_num", orderNum).single();
   if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });

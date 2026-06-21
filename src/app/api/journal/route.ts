@@ -26,10 +26,9 @@ export async function POST(req: Request) {
   const err = validateTxn(txn);
   if (err) return NextResponse.json({ error: err }, { status: 422 });
 
-  // ponytail: use owner's JWT via anon key — RLS policies allow owner inserts
-  const db = createClient(URL, KEY);
-  const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (token) await db.auth.setSession({ access_token: token, refresh_token: "" });
+  // ponytail: use anon key + owner's JWT in header — RLS policies allow owner inserts
+  const token = req.headers.get("authorization")?.replace("Bearer ", "") ?? "";
+  const db = createClient(URL, KEY, { global: { headers: { Authorization: `Bearer ${token}` } } });
 
   const { data: header, error: hErr } = await db
     .from("transactions")
