@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { createClient } from "@supabase/supabase-js";
 import { validateTxn, type Txn } from "@/lib/accounting";
 import { getAuthUser, isOwnerEmail } from "@/lib/auth";
+
+const URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 export async function POST(req: Request) {
   const user = await getAuthUser(req);
@@ -18,8 +21,11 @@ export async function POST(req: Request) {
   if (!method || typeof method !== "string")
     return NextResponse.json({ error: "Payment method required." }, { status: 400 });
 
-  const db = supabaseAdmin();
-  if (!db) return NextResponse.json({ error: "Service unavailable." }, { status: 503 });
+  // ponytail: use anon key — RLS policies allow owner to read/update/insert
+  const db = createClient(URL, KEY);
+  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  if (token) await db.auth.setSession({ access_token: token, refresh_token: "" });
+
   const { data: order } = await db.from("orders").select("*").eq("order_num", orderNum).single();
   if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 

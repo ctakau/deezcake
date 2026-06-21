@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { createClient } from "@supabase/supabase-js";
 import { validateTxn, type Txn } from "@/lib/accounting";
 import { getAuthUser, isOwnerEmail } from "@/lib/auth";
+
+const URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 export async function POST(req: Request) {
   const user = await getAuthUser(req);
@@ -10,11 +13,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   let txn: Txn;
-  try {
-    txn = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
+  try { txn = await req.json(); }
+  catch { return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 }); }
 
   if (!txn.date || !txn.desc || !Array.isArray(txn.splits))
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
@@ -26,8 +26,10 @@ export async function POST(req: Request) {
   const err = validateTxn(txn);
   if (err) return NextResponse.json({ error: err }, { status: 422 });
 
-  const db = supabaseAdmin();
-  if (!db) return NextResponse.json({ error: "Service unavailable." }, { status: 503 });
+  // ponytail: use owner's JWT via anon key — RLS policies allow owner inserts
+  const db = createClient(URL, KEY);
+  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  if (token) await db.auth.setSession({ access_token: token, refresh_token: "" });
 
   const { data: header, error: hErr } = await db
     .from("transactions")
