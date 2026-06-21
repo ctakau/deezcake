@@ -3,8 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { validateTxn, type Txn } from "@/lib/accounting";
 import { getAuthUser, isOwnerEmail } from "@/lib/auth";
 
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const SUPA_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 export async function POST(req: Request) {
   const user = await getAuthUser(req);
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
   // ponytail: use anon key + owner's JWT in header — RLS policies allow owner inserts
   const token = req.headers.get("authorization")?.replace("Bearer ", "") ?? "";
-  const db = createClient(URL, KEY, { global: { headers: { Authorization: `Bearer ${token}` } } });
+  const db = createClient(SUPA_URL, SUPA_KEY, { global: { headers: { Authorization: `Bearer ${token}` } } });
 
   const { data: header, error: hErr } = await db
     .from("transactions")
