@@ -35,15 +35,21 @@ function AccountInner() {
 
   useEffect(() => {
     const sb = supabaseBrowser();
+    const loadUser = (u: any) => {
+      setUser(u);
+      sb.from("orders").select("*").eq("user_id", u.id)
+        .order("created_at", { ascending: false })
+        .then(({ data: rows }) => setOrders(rows || []));
+    };
     sb.auth.getUser().then(({ data }) => {
-      if (data.user) {
-        setUser(data.user);
-        sb.from("orders").select("*").eq("user_id", data.user.id)
-          .order("created_at", { ascending: false })
-          .then(({ data: rows }) => setOrders(rows || []));
-      }
+      if (data.user) loadUser(data.user);
       setLoading(false);
     });
+    // ponytail: handles token exchange from email confirm/reset URL hash
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
+      if (session?.user && !user) { loadUser(session.user); setLoading(false); }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const clear = () => { setMsg(""); setErr(""); };
@@ -66,7 +72,7 @@ function AccountInner() {
     const sb = supabaseBrowser();
     const { error } = await sb.auth.signUp({
       email: email.trim(), password,
-      options: { emailRedirectTo: window.location.origin + "/auth/callback" },
+      options: { emailRedirectTo: window.location.origin + "/account" },
     });
     setBusy(false);
     if (error) { setErr(error.message); return; }
