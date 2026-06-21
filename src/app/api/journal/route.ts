@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { validateTxn, type Txn } from "@/lib/accounting";
 import { getAuthUser, isOwnerEmail } from "@/lib/auth";
-
-const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const SUPA_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 export async function POST(req: Request) {
   const user = await getAuthUser(req);
@@ -13,8 +10,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   let txn: Txn;
-  try { txn = await req.json(); }
-  catch { return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 }); }
+  try {
+    txn = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
 
   if (!txn.date || !txn.desc || !Array.isArray(txn.splits))
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
@@ -26,9 +26,8 @@ export async function POST(req: Request) {
   const err = validateTxn(txn);
   if (err) return NextResponse.json({ error: err }, { status: 422 });
 
-  // ponytail: use anon key + owner's JWT in header — RLS policies allow owner inserts
-  const token = req.headers.get("authorization")?.replace("Bearer ", "") ?? "";
-  const db = createClient(SUPA_URL, SUPA_KEY, { global: { headers: { Authorization: `Bearer ${token}` } } });
+  const db = supabaseAdmin();
+  if (!db) return NextResponse.json({ error: "Service unavailable." }, { status: 503 });
 
   const { data: header, error: hErr } = await db
     .from("transactions")
