@@ -19,6 +19,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Payment method required." }, { status: 400 });
 
   const db = supabaseAdmin();
+  if (!db) return NextResponse.json({ error: "Service unavailable." }, { status: 503 });
   const { data: order } = await db.from("orders").select("*").eq("order_num", orderNum).single();
   if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 

@@ -27,6 +27,7 @@ export async function POST(req: Request) {
   if (err) return NextResponse.json({ error: err }, { status: 422 });
 
   const db = supabaseAdmin();
+  if (!db) return NextResponse.json({ error: "Service unavailable." }, { status: 503 });
 
   const { data: header, error: hErr } = await db
     .from("transactions")
