@@ -70,12 +70,12 @@ function AccountInner() {
     if (password.length < 8) { setErr("Password must be at least 8 characters."); setBusy(false); return; }
     if (password !== confirmPw) { setErr("Passwords do not match."); setBusy(false); return; }
     const sb = supabaseBrowser();
-    const { error } = await sb.auth.signUp({
-      email: email.trim(), password,
-      options: { emailRedirectTo: window.location.origin + "/account" },
-    });
+    const { data, error } = await sb.auth.signUp({ email: email.trim(), password });
+    if (error) { setErr(error.message); setBusy(false); return; }
+    // ponytail: if email confirm is off, session comes back immediately — auto-login
+    if (data.session) { window.location.reload(); return; }
+    // email confirm is on — tell user to check email
     setBusy(false);
-    if (error) { setErr(error.message); return; }
     setMsg("Account created! Check your email to confirm, then sign in.");
     setView("signin");
     setPassword(""); setConfirmPw("");
