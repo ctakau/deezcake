@@ -175,13 +175,14 @@ function OrdersAdmin({ orders, reload }: any) {
   const setStatus = async (o: any, status: string) => {
     await supabaseBrowser().from("orders").update({ status }).eq("id", o.id); reload();
   };
+  // ponytail: skip API, update directly via supabase client — RLS allows owner updates
   const pay = async (o: any, amount: number, method: string) => {
     const sb = supabaseBrowser();
-    const { data: { session } } = await sb.auth.getSession();
-    const token = session?.access_token ?? "";
-    await fetch("/api/payments", { method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-      body: JSON.stringify({ orderNum: o.order_num, amount, method }) }); reload();
+    const paid = Number(o.paid) + amount;
+    const pay_status = paid >= Number(o.total) ? "Paid" : paid > 0 ? "Partially paid" : "Unpaid";
+    const status = paid >= Number(o.total) && o.status === "Pending" ? "Confirmed" : o.status;
+    await sb.from("orders").update({ paid, pay_status, status }).eq("id", o.id);
+    reload();
   };
   return (
     <>
